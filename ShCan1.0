@@ -1,0 +1,92 @@
+#define X_STEP_PIN         54
+#define X_DIR_PIN          55
+#define X_ENABLE_PIN       38
+#define X_MIN_PIN           3
+#define X_MAX_PIN           2
+
+#define Y_STEP_PIN         60
+#define Y_DIR_PIN          61
+#define Y_ENABLE_PIN       56
+#define Y_MIN_PIN          14
+#define Y_MAX_PIN          15
+
+const int eyeX = A0;
+const int eyeY = A1;
+const int SWITCH = 53;
+const int LED = 51;
+//const int stepsPerRev = 200;
+bool state = 0; //whether device is on/off
+int measurements[350][2];
+int arrLength = sizeof(measurements);
+int moveTime = 2000;  //(ms)
+int totTime = moveTime*2;  //time for motors to come back to original position
+int currentMillis = 0;
+
+void setup(){
+  Serial.begin(9600);
+  pinMode(eyeX, INPUT);
+  pinMode(eyeY, INPUT);
+  pinMode(SWITCH, INPUT);
+  pinMode(X_STEP_PIN  , OUTPUT);
+  pinMode(X_DIR_PIN    , OUTPUT);
+  pinMode(X_ENABLE_PIN    , OUTPUT);
+  pinMode(Y_STEP_PIN  , OUTPUT);
+  pinMode(Y_DIR_PIN    , OUTPUT);
+  pinMode(Y_ENABLE_PIN    , OUTPUT);
+}
+
+void translate(){
+  if (millis() % totTime < moveTime) {
+    digitalWrite(X_DIR_PIN    , HIGH);
+    digitalWrite(Y_DIR_PIN    , HIGH);
+  }
+  else {
+    digitalWrite(X_DIR_PIN    , LOW);
+    digitalWrite(Y_DIR_PIN    , LOW);
+  } 
+ 
+  digitalWrite(X_STEP_PIN    , HIGH);
+  digitalWrite(Y_STEP_PIN    , HIGH);
+  delay(1);
+  
+  digitalWrite(X_STEP_PIN    , LOW);
+  digitalWrite(Y_STEP_PIN    , LOW);
+}
+
+void writeData(){
+  while(millis()-currentMillis<=3000){  //checks if we're still in the measuring interval's time frame
+    int count = 1;
+    if(millis()-currentMillis==count*10){  //multiplier decides number of milliseconds per measurement
+      measurements[count-1][0] = analogRead(eyeX); 
+      measurements[count-1][1] = analogRead(eyeY);
+      count++;
+    }    
+  }
+}
+
+void printData(){  //use for debugging and/or analyzing data
+  for(int i=0; i<arrLength; i++){
+    for(int j=0; j<2; j++){
+      Serial.print(measurements[i][j]);
+    }
+    Serial.println();
+  }  
+}
+
+
+void loop(){
+  if(millis()-currentMillis>=6000){
+    currentMillis = millis(); //update currentMillis after each interval
+  }
+  state = digitalRead(SWITCH); //updates switch value each loop
+  digitalWrite(LED, LOW);
+  if(state){
+    digitalWrite(LED, HIGH); 
+    translate();
+    writeData();
+    printData();
+    while(state){
+      state = digitalRead(SWITCH);
+    }
+  }
+}
