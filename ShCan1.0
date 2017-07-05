@@ -21,6 +21,7 @@ int arrLength = sizeof(measurements);
 int moveTime = 2000;  //(ms)
 int totTime = moveTime*2;  //time for motors to come back to original position
 int currentMillis = 0;
+int count = 0;  //number of times through the loop
 
 void setup(){
   Serial.begin(9600);
@@ -75,7 +76,7 @@ void printData(){  //use for debugging and/or analyzing data
 
 
 void loop(){
-  if(millis()-currentMillis>=6000){
+  if(millis()-currentMillis>=6000 || count == 0){
     currentMillis = millis(); //update currentMillis after each interval
   }
   state = digitalRead(SWITCH); //updates switch value each loop
@@ -85,6 +86,7 @@ void loop(){
     translate();
     writeData();
     printData();
+    count++;
     while(state){
       state = digitalRead(SWITCH);
     }
