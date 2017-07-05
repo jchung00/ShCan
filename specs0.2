@@ -1,0 +1,81 @@
+#include <Stepper.h>
+
+const int eyeX = A0;
+const int eyeY = A1;
+const int SWITCH = 7;
+const int LED = 13;
+const int stepsPerRev = 200;
+const int motorIterations = 5;
+bool state = 0; //whether device is on/off
+int measurements[1000][2];
+int arrLength = sizeof(measurements);
+
+Stepper xStepper(stepsPerRev, 2, 3, 4, 5);
+Stepper yStepper(stepsPerRev, 8, 9, 10, 11);
+
+void setup(){
+  Serial.begin(9600);
+  pinMode(eyeX, INPUT);
+  pinMode(eyeY, INPUT);
+  pinMode(SWITCH, INPUT);
+}
+
+void translateX(){
+  xStepper.step(stepsPerRev);
+}
+
+void translateY(){
+  yStepper.step(stepsPerRev);
+}
+
+void revertPosition(){
+  for(int i=0; i<motorIterations; i++){
+    xStepper.step(-stepsPerRev);
+    yStepper.step(-stepsPerRev);    
+  }
+}
+
+void writeXData(int count){
+  for(int x=0; x<200; x++){
+    if(x==xStepper.getStep()){
+      measurements[count*200+x][0] = analogRead(eyeX);
+    }
+  }
+  //measurements[count*200+xStepper.getStep()][0] = analogRead(eyeX);
+}
+
+void writeYData(int count){
+  for(int y=0; y<200; y++){
+    if(y==yStepper.getStep()){
+      measurements[count*200+y][1] = analogRead(eyeY);
+    }
+  }
+  //measurements[count*200+yStepper.getStep()][1] = analogRead(eyeY);
+}
+
+void printData(){
+  for(int i=0; i<arrLength; i++){
+    for(int j=0; j<2; j++){
+      Serial.print(measurements[i][j]);
+    }
+    Serial.println();
+  }  
+}
+
+
+void loop(){
+  state = digitalRead(SWITCH); //updates switch value each loop
+  digitalWrite(LED, LOW);
+  if(state){
+    digitalWrite(LED, HIGH); 
+    for(int i=0; i<motorIterations; i++){
+      translateX();
+      writeXData(i);
+      translateY();
+      writeYData(i);    
+    }
+    printData();
+    revertPosition();
+    while(state);
+  }
+}
