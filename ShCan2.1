@@ -1,0 +1,74 @@
+#include <Stepper.h>
+#include <Ultrasonic.h>
+
+#define trigPinX 41
+#define echoPinX 39
+
+const int LED = 45;
+const int SWITCH = 47;
+const int stepsPerRev = 20;
+int moveTime = 2000;  //(ms)
+int totTime = moveTime*2;  //time for motors to come back to original position
+int currentMillis = 0;
+bool state = 0;
+int measurements[70];
+int times = 0;
+int count = 0;
+int stopper = 0;
+
+Ultrasonic eyeX(trigPinX, echoPinX);
+Stepper stepper(stepsPerRev, 2, 3, 4, 5);
+
+void translate(){
+  stepper.step(stepsPerRev);
+}
+
+void backward(){
+  stepper.step(-stepsPerRev);
+}
+
+void stopMotors(){
+  stepper.step(0);
+}
+
+void printData(){
+  for(int i=0; i<70; i++){
+    Serial.print(measurements[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+}
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  stepper.setSpeed(80);
+  pinMode(SWITCH, INPUT);
+}
+
+void loop() {
+  stopper = 0;
+  digitalWrite(LED, LOW);
+  currentMillis = millis(); //update currentMillis after each interval
+  state = digitalRead(SWITCH);
+  if(state){
+    digitalWrite(LED, HIGH);
+    times++;
+    for(int i=0; i<70; i++){
+      translate();
+      measurements[count] = eyeX.distanceRead()*10;
+      count++;
+    }
+    for(int i=0; i<70; i++){
+      backward();        
+    }
+    while(state){
+      stopMotors();
+      if(stopper==0){
+        printData();
+        stopper++;
+      }
+      state = digitalRead(SWITCH);
+    }
+  }
+}
