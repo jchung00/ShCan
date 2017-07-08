@@ -1,0 +1,145 @@
+#include <Stepper.h>
+#include <Ultrasonic.h>
+
+#define trigPinX 41
+#define echoPinX 39
+
+const int LED = 45;
+const int SWITCH = 47;
+const int stepsPerRev = 20;
+int moveTime = 2000;  //(ms)
+int totTime = moveTime*2;  //time for motors to come back to original position
+int currentMillis = 0;
+bool state = 0;
+int measurements[70];
+int times = 0;
+int count = 0;
+int stopper = 0;
+
+Ultrasonic eyeX(trigPinX, echoPinX);
+Stepper stepper(stepsPerRev, 2, 3, 4, 5);
+
+void translate(){
+  stepper.step(-stepsPerRev);
+}
+
+void backward(){
+  stepper.step(stepsPerRev);
+}
+
+void stopMotors(){
+  stepper.step(0);
+}
+
+double heelToToe(){
+  int counter = 0;
+  double endIndex = 0;
+  double answer = 0; 
+  for(int i=0; i<70; i++){
+    if(measurements[i]>=170 && measurements[i]<=180){
+      counter++;
+      if(counter>1){
+        endIndex = i-2;
+        break;
+      }
+    }
+    else{
+      counter=0;
+    }
+  }
+  answer = endIndex*5.538+30;
+  return answer;
+}
+
+String longestToe(){
+  return "Second";
+}
+
+double archToHeel(){
+  return heelToToe()*0.6;
+}
+
+int width(){
+  int minimum = 180;
+  for(int i=0; i<70; i++){
+    if(measurements[i]<minimum && measurements[i]>=10){
+      minimum = measurements[i];
+    }
+  }
+  return 180-minimum;
+}
+
+double lengthAtWidth(){
+  int minimum = 180;
+  int minIndex = 0;
+  double indexAtWidth = 0;
+  for(int i=0; i<70; i++){
+    if(measurements[i]<minimum && measurements[i]>=20){
+      minimum = measurements[i];
+      minIndex = i;
+    }
+  }
+  indexAtWidth = minIndex;
+  return indexAtWidth*5.538+30;
+}
+
+void printDouble(double x){
+  int intPart = (int) x;
+  double afterDecimal = (double) (x - (double) intPart);
+  int decimalPart = afterDecimal*1000;
+  Serial.print(intPart);
+  Serial.print(".");
+  Serial.println(decimalPart);
+}
+
+void printData(){
+  for(int i=0; i<70; i++){
+    Serial.print(measurements[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+  Serial.print("Heel to Toe Length: ");
+  printDouble(heelToToe());
+  Serial.print("Longest Toe: ");
+  Serial.println(longestToe());
+  Serial.print("Arch to Heel Length: ");
+  printDouble(archToHeel());
+  Serial.print("Maximum Width: ");
+  Serial.println(width());
+  Serial.print("Length at Maximum Width: ");
+  printDouble(lengthAtWidth());
+}
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  stepper.setSpeed(80);
+  pinMode(SWITCH, INPUT);
+}
+
+void loop() {
+  stopper = 0;
+  digitalWrite(LED, LOW);
+  currentMillis = millis(); //update currentMillis after each interval
+  state = digitalRead(SWITCH);
+  if(state){
+    digitalWrite(LED, HIGH);
+    times++;
+    for(int i=0; i<70; i++){
+      translate();
+      measurements[count] = eyeX.distanceRead()*10;
+      count++;
+    }
+    /*for(int i=0; i<5; i++){
+      backward();        
+    }*/
+    while(state){
+      stopMotors();
+      if(stopper==0){
+        printData();
+        stopper++;
+      }
+      state = digitalRead(SWITCH);
+    }
+  }
+}
